@@ -8,8 +8,9 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+COPY bot/ bot/
+COPY run.py .
 
-COPY . .
+RUN pip install --no-cache-dir .
 
 CMD ["python", "run.py"]

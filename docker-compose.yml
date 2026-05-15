@@ -1,0 +1,7 @@
+services:
+  bocchi:
+    build: .
+    container_name: bocchi
+    restart: unless-stopped
+    env_file:
+      - .env

@@ -85,9 +85,31 @@ python run.py
 
 ## Docker
 
+Make sure you have a `.env` file with your credentials (see step 4 above).
+
+### Using Docker Compose (recommended)
+
 ```bash
-docker build -t discord-music-bot .
-docker run -d --env-file .env discord-music-bot
+docker compose up -d
+```
+
+To stop the bot:
+
+```bash
+docker compose down
+```
+
+To rebuild after code changes:
+
+```bash
+docker compose up -d --build
+```
+
+### Using Docker directly
+
+```bash
+docker build -t bocchi .
+docker run -d --name bocchi --env-file .env --restart unless-stopped bocchi
 ```
 
 ## Discord Bot Setup
@@ -121,8 +143,10 @@ discord-music-bot/
 │   └── cogs/
 │       ├── __init__.py
 │       └── music.py       # Music slash commands
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
+├── docker-compose.yml
 ├── Dockerfile
 ├── pyproject.toml
 ├── run.py
