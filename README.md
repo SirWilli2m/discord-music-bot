@@ -1,6 +1,6 @@
-# Discord Music Bot
+# Bocchi
 
-A Discord bot that plays music from **YouTube** and **Spotify**, built with Python.
+A Discord music bot that plays music from **YouTube** and **Spotify**, built with Python.
 
 ## Features
 

@@ -6,7 +6,7 @@ from discord.ext import commands
 from bot.config import DISCORD_TOKEN
 
 
-class MusicBot(commands.Bot):
+class Bocchi(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
@@ -33,7 +33,7 @@ def main() -> None:
         print("Error: DISCORD_TOKEN not set. Copy .env.example to .env and add your token.")
         return
 
-    bot = MusicBot()
+    bot = Bocchi()
     bot.run(DISCORD_TOKEN)
 
 

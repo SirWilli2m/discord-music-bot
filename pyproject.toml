@@ -1,7 +1,7 @@
 [project]
-name = "discord-music-bot"
+name = "bocchi"
 version = "1.0.0"
-description = "A Discord bot that plays music from YouTube and Spotify"
+description = "Bocchi — a Discord bot that plays music from YouTube and Spotify"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
