@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bocchi - Log Viewer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f0f14;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #16161e;
+            border-bottom: 1px solid #2a2a3a;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #a78bfa;
+            white-space: nowrap;
+        }
+
+        header h1 span {
+            color: #6b7280;
+            font-weight: 400;
+            font-size: 16px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .search-box {
+            background: #1e1e2e;
+            border: 1px solid #2a2a3a;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e0e0e0;
+            font-size: 14px;
+            width: 260px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box:focus { border-color: #a78bfa; }
+
+        .filter-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid #2a2a3a;
+            background: #1e1e2e;
+            color: #9ca3af;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover { border-color: #4b5563; }
+        .filter-btn.active { border-color: #a78bfa; color: #a78bfa; background: #1e1e2e; }
+        .filter-btn.active.info { border-color: #3b82f6; color: #3b82f6; }
+        .filter-btn.active.warning { border-color: #f59e0b; color: #f59e0b; }
+        .filter-btn.active.error { border-color: #ef4444; color: #ef4444; }
+        .filter-btn.active.debug { border-color: #6b7280; color: #9ca3af; }
+
+        .stats {
+            margin-left: auto;
+            font-size: 13px;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+
+        .drop-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: calc(100vh - 70px);
+            padding: 40px;
+            text-align: center;
+        }
+
+        .drop-zone.drag-over { background: rgba(167, 139, 250, 0.05); }
+
+        .drop-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .drop-zone h2 {
+            font-size: 22px;
+            color: #9ca3af;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .drop-zone p {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            padding: 10px 24px;
+            background: #a78bfa;
+            color: #0f0f14;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .upload-btn:hover { background: #8b5cf6; }
+
+        #file-input { display: none; }
+
+        .log-container {
+            height: calc(100vh - 70px);
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .log-container::-webkit-scrollbar { width: 8px; }
+        .log-container::-webkit-scrollbar-track { background: #0f0f14; }
+        .log-container::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 4px; }
+
+        .log-line {
+            padding: 4px 24px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            border-bottom: 1px solid #1a1a24;
+            display: flex;
+            gap: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .log-line:hover { background: #16161e; }
+
+        .log-line .timestamp {
+            color: #6b7280;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .log-line .level {
+            font-weight: 700;
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-width: 65px;
+        }
+
+        .log-line .message { flex: 1; }
+
+        .log-line.info .level { color: #3b82f6; }
+        .log-line.warning .level { color: #f59e0b; }
+        .log-line.error .level { color: #ef4444; }
+        .log-line.error .message { color: #fca5a5; }
+        .log-line.debug .level { color: #6b7280; }
+        .log-line.debug .message { color: #9ca3af; }
+
+        .log-line.highlight { background: rgba(167, 139, 250, 0.1); }
+
+        .hidden { display: none !important; }
+
+        .clear-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid #2a2a3a;
+            background: #1e1e2e;
+            color: #9ca3af;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .clear-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+        .scroll-bottom {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 10px 16px;
+            background: #a78bfa;
+            color: #0f0f14;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .scroll-bottom:hover { background: #8b5cf6; }
+
+        @media (max-width: 768px) {
+            header { padding: 12px 16px; }
+            .search-box { width: 100%; }
+            .log-line { padding: 4px 12px; font-size: 12px; }
+            .stats { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Bocchi <span>Log Viewer</span></h1>
+        <div class="controls hidden" id="controls">
+            <input type="text" class="search-box" id="search" placeholder="Search logs...">
+            <button class="filter-btn active" data-level="all">All</button>
+            <button class="filter-btn info" data-level="INFO">INFO</button>
+            <button class="filter-btn warning" data-level="WARNING">WARN</button>
+            <button class="filter-btn error" data-level="ERROR">ERROR</button>
+            <button class="filter-btn debug" data-level="DEBUG">DEBUG</button>
+            <span class="stats" id="stats"></span>
+            <button class="clear-btn" id="clear-btn">New file</button>
+        </div>
+    </header>
+
+    <div class="drop-zone" id="drop-zone">
+        <div class="drop-icon">&#128196;</div>
+        <h2>Drop your bocchi.log file here</h2>
+        <p>or click below to browse</p>
+        <button class="upload-btn" id="upload-btn">Choose log file</button>
+        <input type="file" id="file-input" accept=".log,.txt">
+    </div>
+
+    <div class="log-container hidden" id="log-container"></div>
+    <button class="scroll-bottom" id="scroll-bottom">Scroll to bottom</button>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const controls = document.getElementById('controls');
+        const logContainer = document.getElementById('log-container');
+        const searchBox = document.getElementById('search');
+        const statsEl = document.getElementById('stats');
+        const clearBtn = document.getElementById('clear-btn');
+        const scrollBtn = document.getElementById('scroll-bottom');
+
+        let allLines = [];
+        let activeLevel = 'all';
+
+        const LOG_REGEX = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(\w+)\] (\S+): (.*)$/;
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) loadFile(e.target.files[0]);
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            allLines = [];
+            logContainer.innerHTML = '';
+            logContainer.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            controls.classList.add('hidden');
+            searchBox.value = '';
+            activeLevel = 'all';
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.level === 'all');
+            });
+        });
+
+        function loadFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                parseAndRender(text);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseAndRender(text) {
+            const rawLines = text.split('\n');
+            allLines = [];
+            let current = null;
+
+            for (const raw of rawLines) {
+                const match = raw.match(LOG_REGEX);
+                if (match) {
+                    if (current) allLines.push(current);
+                    current = {
+                        timestamp: match[1],
+                        level: match[2],
+                        source: match[3],
+                        message: match[4],
+                        raw: raw
+                    };
+                } else if (current && raw.trim()) {
+                    current.message += '\n' + raw;
+                    current.raw += '\n' + raw;
+                }
+            }
+            if (current) allLines.push(current);
+
+            dropZone.classList.add('hidden');
+            controls.classList.remove('hidden');
+            logContainer.classList.remove('hidden');
+
+            renderLines();
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function renderLines() {
+            const search = searchBox.value.toLowerCase();
+            let html = '';
+            let shown = 0;
+            const counts = { INFO: 0, WARNING: 0, ERROR: 0, DEBUG: 0 };
+
+            for (const line of allLines) {
+                const lvl = line.level.toUpperCase();
+                if (counts[lvl] !== undefined) counts[lvl]++;
+
+                if (activeLevel !== 'all' && lvl !== activeLevel) continue;
+                if (search && !line.raw.toLowerCase().includes(search)) continue;
+
+                const levelClass = lvl === 'WARNING' ? 'warning'
+                    : lvl === 'ERROR' ? 'error'
+                    : lvl === 'DEBUG' ? 'debug' : 'info';
+
+                const highlight = search && line.raw.toLowerCase().includes(search) ? ' highlight' : '';
+
+                html += `<div class="log-line ${levelClass}${highlight}">` +
+                    `<span class="timestamp">${esc(line.timestamp)}</span>` +
+                    `<span class="level">[${esc(line.level)}]</span>` +
+                    `<span class="message">${esc(line.message)}</span>` +
+                    `</div>`;
+                shown++;
+            }
+
+            logContainer.innerHTML = html;
+            statsEl.textContent = `${shown} / ${allLines.length} lines | INFO: ${counts.INFO} | WARN: ${counts.WARNING} | ERROR: ${counts.ERROR} | DEBUG: ${counts.DEBUG}`;
+        }
+
+        function esc(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeLevel = btn.dataset.level;
+                renderLines();
+            });
+        });
+
+        searchBox.addEventListener('input', () => renderLines());
+
+        logContainer.addEventListener('scroll', () => {
+            const atBottom = logContainer.scrollHeight - logContainer.scrollTop - logContainer.clientHeight < 100;
+            scrollBtn.style.display = atBottom ? 'none' : 'block';
+        });
+
+        scrollBtn.addEventListener('click', () => {
+            logContainer.scrollTop = logContainer.scrollHeight;
+        });
+    </script>
+</body>
+</html>
