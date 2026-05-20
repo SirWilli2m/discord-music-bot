@@ -1,0 +1,25 @@
+[project]
+name = "bocchi"
+version = "1.0.0"
+description = "Bocchi — a Discord bot that plays music from YouTube and Spotify"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "discord.py[voice]>=2.3.0",
+    "yt-dlp>=2024.0.0",
+    "spotipy>=2.23.0",
+    "python-dotenv>=1.0.0",
+    "PyNaCl>=1.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

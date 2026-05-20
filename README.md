@@ -1,2 +1,194 @@
-# discord-music-bot
-Discord bot that plays music from YouTube and Spotify
+# Bocchi
+
+A Discord music bot that plays music from **YouTube** and **Spotify**, built with Python.
+
+## Features
+
+- **YouTube playback** — Play songs and playlists from YouTube URLs or search queries
+- **Spotify support** — Play tracks, albums, and playlists from Spotify links (resolved via YouTube)
+- **Queue management** — Full queue with skip, shuffle, remove, and loop controls
+- **Slash commands** — Modern Discord slash command interface
+- **Rich embeds** — Beautiful now-playing and queue displays
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/play <query>` | Play a song from YouTube/Spotify URL or search query |
+| `/skip` | Skip the current song |
+| `/pause` | Pause playback |
+| `/resume` | Resume playback |
+| `/stop` | Stop playback and clear the queue |
+| `/queue` | Show the current queue |
+| `/nowplaying` | Show the currently playing song |
+| `/loop` | Toggle loop for the current song |
+| `/shuffle` | Shuffle the queue |
+| `/remove <position>` | Remove a song from the queue by position |
+| `/disconnect` | Disconnect the bot from the voice channel |
+
+## Prerequisites
+
+- Python 3.10+
+- [FFmpeg](https://ffmpeg.org/) installed and available in PATH
+- A [Discord Bot Token](https://discord.com/developers/applications)
+- (Optional) [Spotify API credentials](https://developer.spotify.com/dashboard) for Spotify link support
+
+## Setup
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/SirWilli2m/discord-music-bot.git
+cd discord-music-bot
+```
+
+### 2. Install dependencies
+
+```bash
+pip install .
+```
+
+### 3. Install FFmpeg
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install ffmpeg
+```
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
+
+**Windows:**
+Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add to PATH.
+
+### 4. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your credentials:
+
+```env
+DISCORD_TOKEN=your-discord-bot-token-here
+SPOTIFY_CLIENT_ID=your-spotify-client-id-here
+SPOTIFY_CLIENT_SECRET=your-spotify-client-secret-here
+```
+
+### 5. Run the bot
+
+```bash
+python run.py
+```
+
+## Docker
+
+Make sure you have a `.env` file with your credentials (see step 4 above).
+
+### Using Docker Compose (recommended)
+
+```bash
+docker compose up -d
+```
+
+To stop the bot:
+
+```bash
+docker compose down
+```
+
+To rebuild after code changes:
+
+```bash
+docker compose up -d --build
+```
+
+### Using Docker directly
+
+```bash
+docker build -t bocchi .
+docker run -d --name bocchi --env-file .env --restart unless-stopped bocchi
+```
+
+## YouTube Cookies (if YouTube blocks requests)
+
+If you see errors like `Sign in to confirm you're not a bot`, YouTube is rate-limiting your server's IP. You can fix this by providing a `cookies.txt` file from a logged-in YouTube session:
+
+1. Install a browser extension to export cookies in Netscape format:
+   - Chrome: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+   - Firefox: [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+2. Log into [YouTube](https://www.youtube.com) in your browser
+3. Use the extension to export cookies for `youtube.com`
+4. Save the file as `cookies.txt` in the project root (next to `run.py`)
+5. Restart the bot — it will automatically detect and use the cookies file
+
+> **Tip:** YouTube cookies expire periodically. If you start seeing the error again, export fresh cookies.
+
+## Discord Bot Setup
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application** and give it a name
+3. Go to **Bot** → click **Reset Token** → copy the token
+4. Enable **Message Content Intent** under **Privileged Gateway Intents**
+5. Go to **OAuth2** → **URL Generator**:
+   - Select scopes: `bot`, `applications.commands`
+   - Select bot permissions: `Connect`, `Speak`, `Send Messages`, `Embed Links`
+6. Copy the generated URL and open it to invite the bot to your server
+
+## Spotify Setup (Optional)
+
+1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Click **Create App**
+3. Copy the **Client ID** and **Client Secret** to your `.env` file
+
+## Logging
+
+Bocchi logs to both the console and a `bocchi.log` file (with automatic rotation at 5 MB, keeping 3 backups).
+
+- **Local**: logs are written to `bocchi.log` in the project root
+- **Docker**: logs are written to `logs/bocchi.log` and mapped to `./logs/` on your host via the volume mount in `docker-compose.yml`
+
+You can configure logging via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `INFO` | Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `LOG_FILE` | `bocchi.log` | Custom log file path |
+
+To follow logs in real time:
+
+```bash
+tail -f bocchi.log         # local
+tail -f logs/bocchi.log    # docker
+```
+
+## Project Structure
+
+```
+discord-music-bot/
+├── bot/
+│   ├── __init__.py
+│   ├── config.py          # Configuration and environment variables
+│   ├── embeds.py          # Discord embed builders
+│   ├── logger.py          # Logging setup (console + file)
+│   ├── main.py            # Bot entry point and setup
+│   ├── music_player.py    # Music player and queue management
+│   ├── spotify.py         # Spotify API integration
+│   └── cogs/
+│       ├── __init__.py
+│       └── music.py       # Music slash commands
+├── .dockerignore
+├── .env.example
+├── .gitignore
+├── docker-compose.yml
+├── Dockerfile
+├── pyproject.toml
+├── run.py
+└── README.md
+```
+
+## License
+
+MIT
