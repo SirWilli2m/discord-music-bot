@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -10,7 +12,7 @@ from bot.embeds import (
     now_playing_embed,
     queue_embed,
 )
-from bot.music_player import MusicPlayer
+from bot.music_player import MusicPlayer, Track
 from bot.spotify import SpotifyClient
 
 
@@ -50,6 +52,24 @@ class Music(commands.Cog):
 
         return voice_client  # type: ignore[return-value]
 
+    def _start_playing(
+        self,
+        voice_client: discord.VoiceClient,
+        track: Track,
+        guild: discord.Guild,
+    ) -> None:
+        source = self.player.create_source(track)
+
+        def after(error: Exception | None) -> None:
+            if error:
+                print(f"Player error: {error}")
+            asyncio.run_coroutine_threadsafe(
+                self.player.play_next(guild),
+                self.bot.loop,
+            )
+
+        voice_client.play(source, after=after)
+
     @app_commands.command(name="play", description="Play a song from YouTube or Spotify")
     @app_commands.describe(query="YouTube/Spotify URL or search query")
     async def play(self, interaction: discord.Interaction, query: str) -> None:
@@ -83,47 +103,62 @@ class Music(commands.Cog):
                 )
                 return
 
-            await interaction.followup.send(
-                f"Processing **{len(search_queries)}** track(s) from Spotify..."
-            )
+            should_play = not voice_client.is_playing() and not voice_client.is_paused()
 
-            added = 0
-            for sq in search_queries:
-                entries = await self.player.extract_info(f"ytsearch:{sq}")
-                if entries:
-                    track = await self.player.create_track(entries[0], member)
-                    if track:
-                        guild_player.queue.append(track)
-                        added += 1
-
-            if added == 0:
-                await interaction.channel.send(  # type: ignore[union-attr]
-                    embed=error_embed("Could not resolve any Spotify tracks.")
-                )
+            if len(search_queries) == 1:
+                first_entries = await self.player.extract_info(f"ytsearch:{search_queries[0]}")
+                if not first_entries:
+                    await interaction.followup.send(
+                        embed=error_embed("Could not resolve that Spotify track.")
+                    )
+                    return
+                track = await self.player.create_track(first_entries[0], member)
+                if not track:
+                    await interaction.followup.send(embed=error_embed("Failed to load that track."))
+                    return
+                if should_play:
+                    guild_player.current = track
+                    self._start_playing(voice_client, track, interaction.guild)
+                    await interaction.followup.send(embed=now_playing_embed(track))
+                else:
+                    guild_player.queue.append(track)
+                    await interaction.followup.send(
+                        embed=added_to_queue_embed(track, len(guild_player.queue))
+                    )
                 return
 
-            await interaction.channel.send(  # type: ignore[union-attr]
-                f"Added **{added}** track(s) to the queue from Spotify."
-            )
+            # Resolve first track and start playing immediately
+            first_entries = await self.player.extract_info(f"ytsearch:{search_queries[0]}")
+            first_track: Track | None = None
+            if first_entries:
+                first_track = await self.player.create_track(first_entries[0], member)
 
-            if not voice_client.is_playing() and not voice_client.is_paused():
-                guild_player.current = guild_player.queue.pop(0)
-                source = self.player.create_source(guild_player.current)
+            if first_track and should_play:
+                guild_player.current = first_track
+                self._start_playing(voice_client, first_track, interaction.guild)
+                await interaction.followup.send(embed=now_playing_embed(first_track))
+                remaining_queries = search_queries[1:]
+            else:
+                if first_track:
+                    guild_player.queue.append(first_track)
+                remaining_queries = search_queries[1:]
+                await interaction.followup.send(
+                    f"Loading **{len(search_queries)}** track(s) from Spotify..."
+                )
 
-                def after(error: Exception | None) -> None:
-                    if error:
-                        print(f"Player error: {error}")
-                    import asyncio
+            # Load remaining tracks concurrently in the background
+            channel = interaction.channel
 
-                    asyncio.run_coroutine_threadsafe(
-                        self.player.play_next(interaction.guild),  # type: ignore[arg-type]
-                        self.bot.loop,
+            async def _load_remaining() -> None:
+                tracks = await self.player.search_and_resolve_concurrent(remaining_queries, member)
+                guild_player.queue.extend(tracks)
+                total = len(tracks) + (1 if first_track else 0)
+                if channel:
+                    await channel.send(  # type: ignore[union-attr]
+                        f"Loaded **{total}** track(s) from Spotify."
                     )
 
-                voice_client.play(source, after=after)
-                await interaction.channel.send(  # type: ignore[union-attr]
-                    embed=now_playing_embed(guild_player.current)
-                )
+            asyncio.create_task(_load_remaining())
             return
 
         # Handle YouTube URLs and search queries
@@ -133,44 +168,37 @@ class Music(commands.Cog):
             return
 
         if len(entries) > 1:
-            await interaction.followup.send(
-                f"Processing **{len(entries)}** track(s) from playlist..."
-            )
-            added = 0
-            for entry in entries:
-                track = await self.player.create_track(entry, member)
-                if track:
-                    guild_player.queue.append(track)
-                    added += 1
+            should_play = not voice_client.is_playing() and not voice_client.is_paused()
 
-            if added == 0:
-                await interaction.channel.send(  # type: ignore[union-attr]
-                    embed=error_embed("Could not load any tracks from the playlist.")
+            # Resolve first track and start playing immediately
+            first_track = await self.player.create_track(entries[0], member)
+
+            if first_track and should_play:
+                guild_player.current = first_track
+                self._start_playing(voice_client, first_track, interaction.guild)
+                await interaction.followup.send(embed=now_playing_embed(first_track))
+                remaining_entries = entries[1:]
+            else:
+                if first_track:
+                    guild_player.queue.append(first_track)
+                remaining_entries = entries[1:]
+                await interaction.followup.send(
+                    f"Loading **{len(entries)}** track(s) from playlist..."
                 )
-                return
 
-            await interaction.channel.send(  # type: ignore[union-attr]
-                f"Added **{added}** track(s) to the queue."
-            )
+            # Load remaining tracks concurrently in the background
+            channel = interaction.channel
 
-            if not voice_client.is_playing() and not voice_client.is_paused():
-                guild_player.current = guild_player.queue.pop(0)
-                source = self.player.create_source(guild_player.current)
-
-                def after(error: Exception | None) -> None:
-                    if error:
-                        print(f"Player error: {error}")
-                    import asyncio
-
-                    asyncio.run_coroutine_threadsafe(
-                        self.player.play_next(interaction.guild),  # type: ignore[arg-type]
-                        self.bot.loop,
+            async def _load_remaining() -> None:
+                tracks = await self.player.resolve_tracks_concurrent(remaining_entries, member)
+                guild_player.queue.extend(tracks)
+                total = len(tracks) + (1 if first_track else 0)
+                if channel:
+                    await channel.send(  # type: ignore[union-attr]
+                        f"Loaded **{total}** track(s) from playlist."
                     )
 
-                voice_client.play(source, after=after)
-                await interaction.channel.send(  # type: ignore[union-attr]
-                    embed=now_playing_embed(guild_player.current)
-                )
+            asyncio.create_task(_load_remaining())
             return
 
         track = await self.player.create_track(entries[0], member)
@@ -184,19 +212,7 @@ class Music(commands.Cog):
             await interaction.followup.send(embed=added_to_queue_embed(track, position))
         else:
             guild_player.current = track
-            source = self.player.create_source(track)
-
-            def after(error: Exception | None) -> None:
-                if error:
-                    print(f"Player error: {error}")
-                import asyncio
-
-                asyncio.run_coroutine_threadsafe(
-                    self.player.play_next(interaction.guild),  # type: ignore[arg-type]
-                    self.bot.loop,
-                )
-
-            voice_client.play(source, after=after)
+            self._start_playing(voice_client, track, interaction.guild)
             await interaction.followup.send(embed=now_playing_embed(track))
 
     @app_commands.command(name="skip", description="Skip the current song")

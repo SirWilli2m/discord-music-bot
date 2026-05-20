@@ -104,6 +104,39 @@ class MusicPlayer:
             requester=requester,
         )
 
+    async def resolve_tracks_concurrent(
+        self,
+        entries: list[dict],
+        requester: discord.Member,
+        max_concurrent: int = 5,
+    ) -> list[Track]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def _resolve(entry: dict) -> Track | None:
+            async with semaphore:
+                return await self.create_track(entry, requester)
+
+        results = await asyncio.gather(*[_resolve(e) for e in entries])
+        return [t for t in results if t is not None]
+
+    async def search_and_resolve_concurrent(
+        self,
+        queries: list[str],
+        requester: discord.Member,
+        max_concurrent: int = 5,
+    ) -> list[Track]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def _search(query: str) -> Track | None:
+            async with semaphore:
+                entries = await self.extract_info(f"ytsearch:{query}")
+                if not entries:
+                    return None
+                return await self.create_track(entries[0], requester)
+
+        results = await asyncio.gather(*[_search(q) for q in queries])
+        return [t for t in results if t is not None]
+
     def create_source(self, track: Track) -> discord.FFmpegOpusAudio:
         return discord.FFmpegOpusAudio(track.stream_url, **FFMPEG_OPTIONS)
 
