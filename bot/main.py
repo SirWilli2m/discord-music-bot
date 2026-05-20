@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 from bot.config import DISCORD_TOKEN
+from bot.logger import log
 
 
 class Bocchi(commands.Bot):
@@ -15,11 +16,11 @@ class Bocchi(commands.Bot):
     async def setup_hook(self) -> None:
         await self.load_extension("bot.cogs.music")
         await self.tree.sync()
-        print(f"Synced {len(self.tree.get_commands())} slash command(s)")
+        log.info("Synced %d slash command(s)", len(self.tree.get_commands()))
 
     async def on_ready(self) -> None:
-        print(f"Logged in as {self.user} (ID: {self.user.id})")  # type: ignore[union-attr]
-        print(f"Connected to {len(self.guilds)} guild(s)")
+        log.info("Logged in as %s (ID: %s)", self.user, self.user.id)  # type: ignore[union-attr]
+        log.info("Connected to %d guild(s)", len(self.guilds))
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.listening,
@@ -30,7 +31,7 @@ class Bocchi(commands.Bot):
 
 def main() -> None:
     if not DISCORD_TOKEN:
-        print("Error: DISCORD_TOKEN not set. Copy .env.example to .env and add your token.")
+        log.error("DISCORD_TOKEN not set. Copy .env.example to .env and add your token.")
         return
 
     bot = Bocchi()

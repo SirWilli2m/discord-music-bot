@@ -143,6 +143,27 @@ If you see errors like `Sign in to confirm you're not a bot`, YouTube is rate-li
 2. Click **Create App**
 3. Copy the **Client ID** and **Client Secret** to your `.env` file
 
+## Logging
+
+Bocchi logs to both the console and a `bocchi.log` file (with automatic rotation at 5 MB, keeping 3 backups).
+
+- **Local**: logs are written to `bocchi.log` in the project root
+- **Docker**: logs are written to `logs/bocchi.log` and mapped to `./logs/` on your host via the volume mount in `docker-compose.yml`
+
+You can configure logging via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `INFO` | Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `LOG_FILE` | `bocchi.log` | Custom log file path |
+
+To follow logs in real time:
+
+```bash
+tail -f bocchi.log         # local
+tail -f logs/bocchi.log    # docker
+```
+
 ## Project Structure
 
 ```
@@ -151,6 +172,7 @@ discord-music-bot/
 │   ├── __init__.py
 │   ├── config.py          # Configuration and environment variables
 │   ├── embeds.py          # Discord embed builders
+│   ├── logger.py          # Logging setup (console + file)
 │   ├── main.py            # Bot entry point and setup
 │   ├── music_player.py    # Music player and queue management
 │   ├── spotify.py         # Spotify API integration

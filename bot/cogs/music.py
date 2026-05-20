@@ -12,6 +12,7 @@ from bot.embeds import (
     now_playing_embed,
     queue_embed,
 )
+from bot.logger import log
 from bot.music_player import MusicPlayer, Track
 from bot.spotify import SpotifyClient
 
@@ -62,7 +63,7 @@ class Music(commands.Cog):
 
         def after(error: Exception | None) -> None:
             if error:
-                print(f"Player error: {error}")
+                log.error("Player error: %s", error)
             asyncio.run_coroutine_threadsafe(
                 self.player.play_next(guild),
                 self.bot.loop,
@@ -161,7 +162,7 @@ class Music(commands.Cog):
                             f"Loaded **{total}** track(s) from Spotify."
                         )
                 except Exception as e:
-                    print(f"Error loading Spotify playlist: {e}")
+                    log.error("Error loading Spotify playlist: %s", e)
                     if channel:
                         await channel.send(  # type: ignore[union-attr]
                             embed=error_embed(f"Some tracks failed to load: {e}")
@@ -208,7 +209,7 @@ class Music(commands.Cog):
                             f"Loaded **{total}** track(s) from playlist."
                         )
                 except Exception as e:
-                    print(f"Error loading YouTube playlist: {e}")
+                    log.error("Error loading YouTube playlist: %s", e)
                     if channel:
                         await channel.send(  # type: ignore[union-attr]
                             embed=error_embed(f"Some tracks failed to load: {e}")

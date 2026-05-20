@@ -7,6 +7,7 @@ import discord
 import yt_dlp
 
 from bot.config import FFMPEG_OPTIONS, YDL_OPTIONS
+from bot.logger import log
 
 
 @dataclass
@@ -118,7 +119,7 @@ class MusicPlayer:
                     return await self.create_track(entry, requester)
                 except Exception as e:
                     title = entry.get("title", entry.get("url", "unknown"))
-                    print(f"Failed to resolve track '{title}': {e}")
+                    log.warning("Failed to resolve track '%s': %s", title, e)
                     return None
 
         results = await asyncio.gather(*[_resolve(e) for e in entries])
@@ -140,7 +141,7 @@ class MusicPlayer:
                         return None
                     return await self.create_track(entries[0], requester)
                 except Exception as e:
-                    print(f"Failed to search for '{query}': {e}")
+                    log.warning("Failed to search for '%s': %s", query, e)
                     return None
 
         results = await asyncio.gather(*[_search(q) for q in queries])
@@ -174,7 +175,7 @@ class MusicPlayer:
 
         def after_playing(error: Exception | None) -> None:
             if error:
-                print(f"Player error: {error}")
+                log.error("Player error: %s", error)
             asyncio.run_coroutine_threadsafe(self.play_next(guild), asyncio.get_event_loop())
 
         voice_client.play(source, after=after_playing)

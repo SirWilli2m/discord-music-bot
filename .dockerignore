@@ -16,4 +16,5 @@ env/
 *.swo
 .DS_Store
 Thumbs.db
+*.log
 README.md
