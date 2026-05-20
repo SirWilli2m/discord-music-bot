@@ -10,6 +10,7 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY bot/ bot/
 COPY run.py .
+COPY cookies.txt* .
 
 RUN pip install --no-cache-dir .
 

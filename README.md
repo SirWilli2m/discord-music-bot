@@ -112,6 +112,20 @@ docker build -t bocchi .
 docker run -d --name bocchi --env-file .env --restart unless-stopped bocchi
 ```
 
+## YouTube Cookies (if YouTube blocks requests)
+
+If you see errors like `Sign in to confirm you're not a bot`, YouTube is rate-limiting your server's IP. You can fix this by providing a `cookies.txt` file from a logged-in YouTube session:
+
+1. Install a browser extension to export cookies in Netscape format:
+   - Chrome: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+   - Firefox: [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+2. Log into [YouTube](https://www.youtube.com) in your browser
+3. Use the extension to export cookies for `youtube.com`
+4. Save the file as `cookies.txt` in the project root (next to `run.py`)
+5. Restart the bot — it will automatically detect and use the cookies file
+
+> **Tip:** YouTube cookies expire periodically. If you start seeing the error again, export fresh cookies.
+
 ## Discord Bot Setup
 
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)

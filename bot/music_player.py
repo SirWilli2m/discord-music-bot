@@ -114,7 +114,12 @@ class MusicPlayer:
 
         async def _resolve(entry: dict) -> Track | None:
             async with semaphore:
-                return await self.create_track(entry, requester)
+                try:
+                    return await self.create_track(entry, requester)
+                except Exception as e:
+                    title = entry.get("title", entry.get("url", "unknown"))
+                    print(f"Failed to resolve track '{title}': {e}")
+                    return None
 
         results = await asyncio.gather(*[_resolve(e) for e in entries])
         return [t for t in results if t is not None]
@@ -129,10 +134,14 @@ class MusicPlayer:
 
         async def _search(query: str) -> Track | None:
             async with semaphore:
-                entries = await self.extract_info(f"ytsearch:{query}")
-                if not entries:
+                try:
+                    entries = await self.extract_info(f"ytsearch:{query}")
+                    if not entries:
+                        return None
+                    return await self.create_track(entries[0], requester)
+                except Exception as e:
+                    print(f"Failed to search for '{query}': {e}")
                     return None
-                return await self.create_track(entries[0], requester)
 
         results = await asyncio.gather(*[_search(q) for q in queries])
         return [t for t in results if t is not None]

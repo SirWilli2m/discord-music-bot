@@ -149,16 +149,25 @@ class Music(commands.Cog):
             # Load remaining tracks concurrently in the background
             channel = interaction.channel
 
-            async def _load_remaining() -> None:
-                tracks = await self.player.search_and_resolve_concurrent(remaining_queries, member)
-                guild_player.queue.extend(tracks)
-                total = len(tracks) + (1 if first_track else 0)
-                if channel:
-                    await channel.send(  # type: ignore[union-attr]
-                        f"Loaded **{total}** track(s) from Spotify."
+            async def _load_remaining_spotify() -> None:
+                try:
+                    tracks = await self.player.search_and_resolve_concurrent(
+                        remaining_queries, member
                     )
+                    guild_player.queue.extend(tracks)
+                    total = len(tracks) + (1 if first_track else 0)
+                    if channel:
+                        await channel.send(  # type: ignore[union-attr]
+                            f"Loaded **{total}** track(s) from Spotify."
+                        )
+                except Exception as e:
+                    print(f"Error loading Spotify playlist: {e}")
+                    if channel:
+                        await channel.send(  # type: ignore[union-attr]
+                            embed=error_embed(f"Some tracks failed to load: {e}")
+                        )
 
-            asyncio.create_task(_load_remaining())
+            asyncio.create_task(_load_remaining_spotify())
             return
 
         # Handle YouTube URLs and search queries
@@ -189,16 +198,23 @@ class Music(commands.Cog):
             # Load remaining tracks concurrently in the background
             channel = interaction.channel
 
-            async def _load_remaining() -> None:
-                tracks = await self.player.resolve_tracks_concurrent(remaining_entries, member)
-                guild_player.queue.extend(tracks)
-                total = len(tracks) + (1 if first_track else 0)
-                if channel:
-                    await channel.send(  # type: ignore[union-attr]
-                        f"Loaded **{total}** track(s) from playlist."
-                    )
+            async def _load_remaining_yt() -> None:
+                try:
+                    tracks = await self.player.resolve_tracks_concurrent(remaining_entries, member)
+                    guild_player.queue.extend(tracks)
+                    total = len(tracks) + (1 if first_track else 0)
+                    if channel:
+                        await channel.send(  # type: ignore[union-attr]
+                            f"Loaded **{total}** track(s) from playlist."
+                        )
+                except Exception as e:
+                    print(f"Error loading YouTube playlist: {e}")
+                    if channel:
+                        await channel.send(  # type: ignore[union-attr]
+                            embed=error_embed(f"Some tracks failed to load: {e}")
+                        )
 
-            asyncio.create_task(_load_remaining())
+            asyncio.create_task(_load_remaining_yt())
             return
 
         track = await self.player.create_track(entries[0], member)
